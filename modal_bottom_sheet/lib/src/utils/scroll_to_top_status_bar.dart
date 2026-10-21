@@ -2,10 +2,22 @@ import 'package:flutter/material.dart';
 
 typedef StatusBarGestureDetectorCallback = void Function(BuildContext context);
 
-/// Widget that that will make the [scrollController] to scroll the top
-/// when tapped on the status bar
+/// Widget that used to make the [scrollController] scroll to the top when
+/// tapped on the status bar.
 ///
-/// Extracted from [Scaffold] and used in [Sheet]
+/// Extracted from [Scaffold] and used in [Sheet].
+///
+/// LABHOUSE FORK: this widget is now a pass-through that returns [child].
+/// Upstream kept an `OverlayPortal.targetsRootOverlay` shown for the whole life
+/// of every sheet. On Flutter 3.41.x a shown portal gives its overlay child one
+/// parent in traversal order and another in hit-test order, which corrupts
+/// `SemanticsObject.parent` in the iOS embedder and leaves the native
+/// accessibility tree empty for the rest of the app session
+/// (https://github.com/flutter/flutter/issues/182604, fixed in Flutter 3.47.7).
+/// The status-bar strip no longer works anyway: since Flutter 3.41 iOS status
+/// bar taps arrive as `handleScrollToTop` on `SystemChannels.statusBar`
+/// instead of a touch at the top of the screen
+/// (https://github.com/flutter/flutter/pull/181670).
 class StatusBarGestureDetector extends StatefulWidget {
   const StatusBarGestureDetector({
     super.key,
@@ -23,35 +35,6 @@ class StatusBarGestureDetector extends StatefulWidget {
 }
 
 class _StatusBarGestureDetectorState extends State<StatusBarGestureDetector> {
-  final OverlayPortalController controller = OverlayPortalController();
-
   @override
-  void initState() {
-    controller.show();
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final view = View.of(context);
-    return OverlayPortal.targetsRootOverlay(
-      controller: controller,
-      overlayChildBuilder: (context) {
-        return Align(
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            height: view.padding.top / view.devicePixelRatio,
-            width: double.infinity,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => widget.onTap(context),
-              // iOS accessibility automatically adds scroll-to-top to the clock in the status bar
-              excludeFromSemantics: true,
-            ),
-          ),
-        );
-      },
-      child: widget.child,
-    );
-  }
+  Widget build(BuildContext context) => widget.child;
 }
